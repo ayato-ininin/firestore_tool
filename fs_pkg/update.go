@@ -9,7 +9,7 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-func Update(ctx context.Context, client *firestore.Client, docPath, key, value string) {
+func Update(ctx context.Context, client *firestore.Client, docPath string, updateStruct []firestore.Update) {
 	iter := client.Collection(docPath).Documents(ctx)
 	for {
 		doc, err := iter.Next()
@@ -21,9 +21,7 @@ func Update(ctx context.Context, client *firestore.Client, docPath, key, value s
 			fmt.Println("Failed Ref: ", doc.Ref)
 		}
 
-		_, err = doc.Ref.Update(ctx, []firestore.Update{
-			{Path: key, Value: value},
-		})
+		_, err = doc.Ref.Update(ctx, updateStruct)
 		if err != nil {
 			log.Fatalf("Failed to update: %v", err)
 			fmt.Println("Failed Ref: ", doc.Ref)

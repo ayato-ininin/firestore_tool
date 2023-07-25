@@ -17,9 +17,7 @@ type Setting struct {
 	credentialJsonPath string
 	mode               string
 	docPath            string
-	key                string
-	strValue           string
-	floatValue         float64
+	updateStruct []firestore.Update
 }
 
 var setting Setting
@@ -87,18 +85,17 @@ func readUserInput(in io.Reader, doneChan chan bool, ctx context.Context, client
 		docPath := scanner.Text()
 		setting.docPath = docPath
 
-		fmt.Println("対象のドキュメントキーを入力してください。")
-		prompt()
-		scanner.Scan()
-		key := scanner.Text()
-		setting.key = key
-
 		if mode == "update" {
+			fmt.Println("対象のドキュメントキーを入力してください。")
+			prompt()
+			scanner.Scan()
+			key := scanner.Text()
+
 			fmt.Println("保存する値を入力してください。")
 			prompt()
 			scanner.Scan()
 			value := scanner.Text()
-			setting.strValue = value
+			setting.updateStruct = append(setting.updateStruct, firestore.Update{Path: key, Value: value})
 		}
 
 		// ユーザーからの入力を取得した後、データを削除または更新します。
@@ -107,7 +104,7 @@ func readUserInput(in io.Reader, doneChan chan bool, ctx context.Context, client
 			fs_pkg.Delete(ctx, client, setting.docPath)
 		} else if setting.mode == "update" {
 			// データを更新する関数を呼び出します。
-			fs_pkg.Update(ctx, client, setting.docPath, setting.key, setting.strValue)
+			fs_pkg.Update(ctx, client, setting.docPath, setting.updateStruct)
 		}
 
 		doneChan <- true
