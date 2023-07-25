@@ -86,16 +86,10 @@ func readUserInput(in io.Reader, doneChan chan bool, ctx context.Context, client
 		setting.docPath = docPath
 
 		if mode == "update" {
-			fmt.Println("対象のドキュメントキーを入力してください。")
-			prompt()
-			scanner.Scan()
-			key := scanner.Text()
-
-			fmt.Println("保存する値を入力してください。")
-			prompt()
-			scanner.Scan()
-			value := scanner.Text()
-			setting.updateStruct = append(setting.updateStruct, firestore.Update{Path: key, Value: value})
+			addUpdateStruct(scanner)
+			for confirmAddUpdateStruct(scanner) {
+				addUpdateStruct(scanner)
+			}
 		}
 
 		// ユーザーからの入力を取得した後、データを削除または更新します。
@@ -110,4 +104,25 @@ func readUserInput(in io.Reader, doneChan chan bool, ctx context.Context, client
 		doneChan <- true
 		return
 	}
+}
+
+func addUpdateStruct(scanner *bufio.Scanner) {
+	fmt.Println("対象のドキュメントキーを入力してください。")
+	prompt()
+	scanner.Scan()
+	key := scanner.Text()
+
+	fmt.Println("保存する値を入力してください。")
+	prompt()
+	scanner.Scan()
+	value := scanner.Text()
+	setting.updateStruct = append(setting.updateStruct, firestore.Update{Path: key, Value: value})
+}
+
+// さらに値を追加しますか？(y/n)を関数化
+func confirmAddUpdateStruct(scanner *bufio.Scanner) bool {
+	fmt.Println("さらに値を追加しますか？(y/n)")
+	prompt()
+	scanner.Scan()
+	return scanner.Text() == "y"
 }
