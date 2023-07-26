@@ -9,6 +9,10 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
+	"strings"
+
+	"firestore_tool/model"
 
 	"cloud.google.com/go/firestore"
 )
@@ -17,7 +21,8 @@ type Setting struct {
 	credentialJsonPath string
 	mode               string
 	docPath            string
-	updateStruct []firestore.Update
+	updateStruct       []firestore.Update
+	whereQuery         []model.WhereQuery
 }
 
 var setting Setting
@@ -85,6 +90,13 @@ func readUserInput(in io.Reader, doneChan chan bool, ctx context.Context, client
 		docPath := scanner.Text()
 		setting.docPath = docPath
 
+		fmt.Println("Where句を設定しますか？(y/n)")
+		prompt()
+		scanner.Scan()
+		if scanner.Text() == "y" {
+			addWhereQuery(scanner)
+		}
+
 		if mode == "update" {
 			addUpdateStruct(scanner)
 			for confirmAddUpdateStruct(scanner) {
@@ -95,10 +107,10 @@ func readUserInput(in io.Reader, doneChan chan bool, ctx context.Context, client
 		// ユーザーからの入力を取得した後、データを削除または更新します。
 		if setting.mode == "delete" {
 			// データを削除する関数を呼び出します。
-			fs_pkg.Delete(ctx, client, setting.docPath)
+			fs_pkg.Delete(ctx, client, setting.docPath, setting.whereQuery)
 		} else if setting.mode == "update" {
 			// データを更新する関数を呼び出します。
-			fs_pkg.Update(ctx, client, setting.docPath, setting.updateStruct)
+			fs_pkg.Update(ctx, client, setting.docPath, setting.updateStruct, setting.whereQuery)
 		}
 
 		doneChan <- true
@@ -112,10 +124,16 @@ func addUpdateStruct(scanner *bufio.Scanner) {
 	scanner.Scan()
 	key := scanner.Text()
 
-	fmt.Println("保存する値を入力してください。")
+	fmt.Println("保存する値を入力してください。扱える型は、string,float64,boolean。形式は以下の通りです。")
+	fmt.Println("type:value 例) string:商品A")
 	prompt()
 	scanner.Scan()
-	value := scanner.Text()
+	s := splitStr(scanner.Text(), ":")
+	value, err := convertToTargetType(s[1], s[0])
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 	setting.updateStruct = append(setting.updateStruct, firestore.Update{Path: key, Value: value})
 }
 
@@ -125,4 +143,52 @@ func confirmAddUpdateStruct(scanner *bufio.Scanner) bool {
 	prompt()
 	scanner.Scan()
 	return scanner.Text() == "y"
+}
+
+func addWhereQuery(scanner *bufio.Scanner) {
+	fmt.Println("Where句を入力してください。扱える型は、string,float64,boolean。形式は以下の通りです。")
+	fmt.Println("Path:Op:type:value 例) shouhinName:==:string:商品A")
+	fmt.Println("複数の場合は,で区切ります。")
+	prompt()
+	scanner.Scan()
+	str := scanner.Text()
+
+	// strをカンマ区切りで分割し、スライスに格納
+	whereQuerySlice := splitStr(str, ",")
+	for _, v := range whereQuerySlice {
+		// whereQuerySliceの要素をコロン区切りで分割し、スライスに格納
+		whereQueryElementSlice := splitStr(v, ":")
+		if len(whereQueryElementSlice) != 4 {
+			log.Fatalf("Invalid where query entered, exiting.")
+			return
+		}
+		value, err := convertToTargetType(whereQueryElementSlice[3], whereQueryElementSlice[2])
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		setting.whereQuery = append(setting.whereQuery, model.WhereQuery{Path: whereQueryElementSlice[0], Op: whereQueryElementSlice[1], Value: value})
+	}
+}
+
+func splitStr(str string, delimiter string) []string {
+	return strings.Split(str, delimiter)
+}
+
+func convertToTargetType(value interface{}, targetType string) (interface{}, error) {
+	var err error
+	if targetType == "string" {
+		return value, nil
+	} else if targetType == "float64" {
+		value, err = strconv.ParseFloat(value.(string), 64)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid float64 value entered: %v", err.Error())
+		}
+		return value, nil
+	} else if targetType == "boolean" {
+		return value == "true", nil
+	} else {
+		return nil, fmt.Errorf("Invalid targetType: %s", targetType)
+	}
 }

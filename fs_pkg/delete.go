@@ -1,17 +1,22 @@
 package fs_pkg
 
-
 import (
 	"context"
 	"fmt"
 	"log"
 
+	"firestore_tool/model"
+
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
 )
 
-func Delete(ctx context.Context, client *firestore.Client, docPath string) {
-	iter := client.Collection(docPath).Documents(ctx)
+func Delete(ctx context.Context, client *firestore.Client, docPath string, whereQuery []model.WhereQuery) {
+	q := client.Collection(docPath).Query
+	for _, v := range whereQuery {
+		q = q.Where(v.Path, v.Op, v.Value)
+	}
+	iter := q.Documents(ctx)
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
