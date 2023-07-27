@@ -99,9 +99,6 @@ func readUserInput(in io.Reader, doneChan chan bool, ctx context.Context, client
 
 		if mode == "update" {
 			addUpdateStruct(scanner)
-			for confirmAddUpdateStruct(scanner) {
-				addUpdateStruct(scanner)
-			}
 		}
 
 		// ユーザーからの入力を取得した後、データを削除または更新します。
@@ -119,30 +116,30 @@ func readUserInput(in io.Reader, doneChan chan bool, ctx context.Context, client
 }
 
 func addUpdateStruct(scanner *bufio.Scanner) {
-	fmt.Println("対象のドキュメントキーを入力してください。")
+	fmt.Println("保存対象のキーと値を入力してください。扱える型は、string,float64,boolean。形式は以下の通りです。")
+	fmt.Println("key:type:value 例) shouhinName:string:商品A")
+	fmt.Println("複数の場合は,で区切ります。")
 	prompt()
 	scanner.Scan()
-	key := scanner.Text()
+	str := scanner.Text()
 
-	fmt.Println("保存する値を入力してください。扱える型は、string,float64,boolean。形式は以下の通りです。")
-	fmt.Println("type:value 例) string:商品A")
-	prompt()
-	scanner.Scan()
-	s := splitStr(scanner.Text(), ":")
-	value, err := convertToTargetType(s[1], s[0])
-	if err != nil {
-		log.Fatal(err)
-		return
+	// strをカンマ区切りで分割し、スライスに格納
+	dataSlice := splitStr(str, ",")
+	for _, v := range dataSlice {
+		// dataSliceの要素をコロン区切りで分割し、スライスに格納
+		keyAndValue := splitStr(v, ":")
+		if len(keyAndValue) != 3 {
+			log.Fatalf("Invalid keyAndValue entered, exiting.")
+			return
+		}
+		value, err := convertToTargetType(keyAndValue[2], keyAndValue[1])
+		if err != nil {
+			log.Fatal(err)
+			return
+		}
+
+		setting.updateStruct = append(setting.updateStruct, firestore.Update{Path: keyAndValue[0], Value: value})
 	}
-	setting.updateStruct = append(setting.updateStruct, firestore.Update{Path: key, Value: value})
-}
-
-// さらに値を追加しますか？(y/n)を関数化
-func confirmAddUpdateStruct(scanner *bufio.Scanner) bool {
-	fmt.Println("さらに値を追加しますか？(y/n)")
-	prompt()
-	scanner.Scan()
-	return scanner.Text() == "y"
 }
 
 func addWhereQuery(scanner *bufio.Scanner) {
