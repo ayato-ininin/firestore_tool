@@ -58,7 +58,7 @@ func main() {
 
 func intro() {
 	fmt.Println("Firebaseと接続しました。")
-	fmt.Println("メソッドを入力してください。")
+	fmt.Println("メソッドを入力してください。updateまたはdelete")
 	prompt()
 }
 
