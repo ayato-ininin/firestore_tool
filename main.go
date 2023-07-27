@@ -52,6 +52,7 @@ func main() {
 	// close the channel
 	close(doneChan)
 
+	printSetting()
 	fmt.Println("done!")
 
 }
@@ -188,4 +189,12 @@ func convertToTargetType(value interface{}, targetType string) (interface{}, err
 	} else {
 		return nil, fmt.Errorf("Invalid targetType: %s", targetType)
 	}
+}
+
+// settingの内容を出力する関数
+func printSetting() {
+	fmt.Println("メソッド: ", setting.mode)
+	fmt.Println("ドキュメントパス: ", setting.docPath)
+	fmt.Println("クエリ: ", setting.whereQuery)
+	fmt.Println("更新データ: ", setting.updateStruct)
 }
